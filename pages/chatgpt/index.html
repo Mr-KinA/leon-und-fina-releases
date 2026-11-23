@@ -84,7 +84,7 @@ for(let i=0;i<30;i++){let x=-17+(i*4.13)%34,z=-11+(i*2.71)%21;if(Math.abs(z+3)<2
 // crystals faceted clusters, each with emissive material
 const crystalMats=[new THREE.MeshStandardMaterial({color:0x83e5df,emissive:0x1c9f9c,emissiveIntensity:1.1,roughness:.22,metalness:.18}),new THREE.MeshStandardMaterial({color:0xc5a0ff,emissive:0x7043bd,emissiveIntensity:1.15,roughness:.2,metalness:.16})];
 let crystals=[];
-function crystal(x,z,h,mi=0){let g=group([x,.18,z]);let m=mesh(new THREE.CrystalGeometry?new THREE.CrystalGeometry():new THREE.OctahedronGeometry(.5,0),crystalMats[mi],[0,h*.48,0],g);m.scale.set(.48,h,.48);m.rotation.y=.3;let base=mesh(new THREE.DodecahedronGeometry(.43,0),stone,[0,.12,0],g);base.scale.y=.42;let glow=new THREE.PointLight(mi?0xb38cff:0x65ffff,1.4,4);glow.position.set(0,h*.65,0);g.add(glow);crystals.push({g,got:false});}
+function crystal(x,z,h,mi=0){let g=group([x,.18,z]);let m=mesh(new THREE.ConeGeometry(.48,h,6,1),crystalMats[mi],[0,h*.48,0],g);m.scale.set(.48,h,.48);m.rotation.y=.3;let base=mesh(new THREE.DodecahedronGeometry(.43,0),stone,[0,.12,0],g);base.scale.y=.42;let glow=new THREE.PointLight(mi?0xb38cff:0x65ffff,1.4,4);glow.position.set(0,h*.65,0);g.add(glow);crystals.push({g,got:false});}
 crystal(-8,-.1,1.5,0);crystal(9,-5.4,1.8,1);crystal(-13,-5.8,1.25,1);crystal(-6,.8,.85,1);crystal(11,1.3,1.1,0);
 // flowers
 for(let i=0;i<100;i++){let x=-17+(i*1.97)%34,z=-12+(i*2.37)%24;if(Math.abs(z+3)<2.1&&Math.abs(x)<15)continue;let col=[0xf2c46b,0xeaa5d4,0xb5c6ff][i%3];let fm=mat(col);beam([x,.08,z],[x,.28,z],.018,leaf);ball([x,.3,z],[.10,.07,.10],fm)}
@@ -93,7 +93,7 @@ function makePerson(x,z,clothes,scale=1){let g=group([x,0,z]);ball([0,1.05,0],[.
 let hero=makePerson(-2.2,1.1,mat(0x4e7890)); // Leon
 let finaGirl=makePerson(-3.15,1.5,mat(0x986d9d),.94);
 // hair cap and simple facial features
-ball([-3.15,1.9,.02],[.31,.16,.28],wood,g=>{}); // detached visual accent
+ball([-3.15,1.9,.02],[.31,.16,.28],wood); // hair cap detail
 // fox model companion, smooth organic forms
 let fox=group([-1.2,1.7,0]);
 ball([0,.65,0],[.65,.34,.32],orange,fox);ball([.43,.91,0],[.38,.39,.34],foxLight,fox);ball([.73,.78,.02],[.3,.19,.2],cream,fox);ball([.96,.78,.02],[.10,.09,.11],dark,fox);
