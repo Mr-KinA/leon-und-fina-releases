@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Leon & Fina – Die Mühle am Kristallbach | ChatGPT-Prototyp</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101b20;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#fff;touch-action:none}
+#game{position:fixed;inset:0}canvas{display:block}
+.panel{position:fixed;background:rgba(13,28,31,.78);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.16);border-radius:16px;box-shadow:0 10px 35px #06101466}
+#quest{left:16px;top:16px;width:min(320px,calc(100vw - 32px));padding:14px 16px}
+#quest h1{font-size:17px;margin:0 0 7px;color:#f6c879;font-weight:750;letter-spacing:.2px}
+#quest p{font-size:14px;line-height:1.4;margin:0}
+#status{right:16px;top:16px;padding:10px 14px;text-align:right;font-size:12px;color:#dce9df}
+#status strong{display:block;font-size:16px;color:#f6d38f}
+#hint{position:fixed;left:50%;top:22%;transform:translateX(-50%);padding:10px 16px;font-size:14px;text-align:center;max-width:85vw;display:none}
+#bottom{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);padding:9px 14px;font-size:12px;color:#e4eadf;white-space:nowrap}
+#joystick{position:fixed;left:22px;bottom:24px;width:116px;height:116px;border-radius:50%;background:#ffffff18;border:1px solid #ffffff50;display:none;touch-action:none}
+#stick{position:absolute;left:36px;top:36px;width:44px;height:44px;border-radius:50%;background:#f5d18cbb;border:1px solid #fff9}
+#action{position:fixed;right:22px;bottom:34px;width:76px;height:76px;border-radius:50%;border:1px solid #fff9;background:#b87a42dd;color:white;font-weight:800;font-size:13px;display:none;box-shadow:0 5px 18px #0006}
+#help{position:fixed;right:16px;bottom:16px;font-size:11px;color:#d4e1d5;opacity:.75}
+@media(pointer:coarse){#joystick,#action{display:block}#bottom{bottom:150px}#help{display:none}#status{top:auto;bottom:18px;right:16px}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="quest" class="panel"><h1>Die Mühle am Kristallbach</h1><p id="questText">Fina hat etwas entdeckt. Finde die drei leuchtenden Kristallsplitter am Bach.</p></div>
+<div id="status" class="panel"><strong id="count">Kristalle 0 / 3</strong><span>Eine kleine Entdeckungsreise</span></div>
+<div id="hint" class="panel"></div>
+<div id="bottom" class="panel">WASD / Pfeile bewegen · Maus ziehen: Kamera · E: untersuchen</div>
+<div id="joystick"><div id="stick"></div></div><button id="action">ANSEHEN</button>
+<div id="help">Prototyp · Browser-Version · Touch & Tastatur</div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+const mount=document.querySelector('#game');
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x9dc7ca);scene.fog=new THREE.Fog(0x9dc7ca,32,88);
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,180);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;mount.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xdff4ff,0x526348,2.0));
+const sun=new THREE.DirectionalLight(0xffe1a6,3.0);sun.position.set(-12,22,9);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-24;sun.shadow.camera.right=24;sun.shadow.camera.top=24;sun.shadow.camera.bottom=-24;scene.add(sun);
+const mat=(c,r=.82,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
+const grass=mat(0x6f9b62),grass2=mat(0x83aa6b),darkGrass=mat(0x466d50),wood=mat(0x76503a),wood2=mat(0xb17a4c),roof=mat(0x59494a),stone=mat(0x858b7d),stone2=mat(0xb2ad92),water= new THREE.MeshStandardMaterial({color:0x43a6b0,roughness:.23,metalness:.12,transparent:true,opacity:.88}),leaf=mat(0x397a58),leaf2=mat(0x5b9563),cream=mat(0xf0dfbd),orange=mat(0xc66b38),foxLight=mat(0xe99b51),dark=mat(0x3e3733),gold=mat(0xf3c96e,.3,.35);
+function mesh(g,m,p,par=scene){let o=new THREE.Mesh(g,m);o.position.set(...p);o.castShadow=true;o.receiveShadow=true;par.add(o);return o}
+function box(p,s,m,par=scene){return mesh(new THREE.BoxGeometry(...s),m,p,par)}
+function ball(p,s,m,par=scene,seg=20){let o=mesh(new THREE.SphereGeometry(1,seg,Math.max(12,Math.floor(seg*.7))),m,p,par);o.scale.set(...s);return o}
+function beam(a,b,r,m,par=scene){let A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),d=B.clone().sub(A);let o=mesh(new THREE.CylinderGeometry(r*.82,r,d.length(),10),m,A.clone().add(B).multiplyScalar(.5).toArray(),par);o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());return o}
+function group(p=[0,0,0]){let g=new THREE.Group();g.position.set(...p);scene.add(g);return g}
+// sculpted rolling meadow
+let ground=mesh(new THREE.PlaneGeometry(90,90,60,60),grass,[0,-.1,0]);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;
+const pos=ground.geometry.attributes.position;for(let i=0;i<pos.count;i++){let x=pos.getX(i),y=pos.getY(i);pos.setZ(i,.12*Math.sin(x*.22)*Math.cos(y*.2)+.045*Math.sin(y*.7+x*.13));}ground.geometry.computeVertexNormals();
+// meadow patches and path
+for(let i=0;i<18;i++){let x=-17+(i*2.31)%34,z=-12+(i*3.7)%24;let p=mesh(new THREE.CircleGeometry(1.2+(i%3)*.45,28),i%2?grass2:darkGrass,[x,.025,z]);p.rotation.x=-Math.PI/2;p.scale.set(1.3,.8,1)}
+// stream ribbon
+const riverPts=[[-19,.12,-3],[-13,.12,-2.6],[-8,.12,-1.6],[-3,.12,-2.2],[2,.12,-3.1],[7,.12,-2.3],[13,.12,-3.7],[20,.12,-4.5]];
+for(let i=0;i<riverPts.length-1;i++){let a=new THREE.Vector3(...riverPts[i]),b=new THREE.Vector3(...riverPts[i+1]),d=b.clone().sub(a);let w=box(a.clone().add(b).multiplyScalar(.5).toArray(),[d.length()+.2,.12,3.15],water);w.position.y=.16;w.rotation.y=-Math.atan2(d.z,d.x);}
+// stepping stones
+for(let i=0;i<17;i++){let x=-13+i*1.55,z=-4.45+.5*Math.sin(i*.48);let s=mesh(new THREE.DodecahedronGeometry(.42+(i%3)*.08,0),i%2?stone:stone2,[x,.24,z]);s.scale.y=.38;s.rotation.y=i*.7}
+// bridge
+let bridge=group([-1.3,0,-2.35]);box([0,.52,0],[4.8,.35,2.1],stone,bridge);
+for(let i=0;i<8;i++)box([-2.05+i*.59,.72,0],[.52,.08,1.9],stone2,bridge);
+for(let side of [-1,1]){beam([-2.35,.82,side*.93],[2.35,.82,side*.93],.075,wood2,bridge);for(let i=0;i<6;i++)beam([-2.15+i*.86,.55,side*.93],[-2.15+i*.86,.94,side*.93],.055,wood,bridge)}
+// mill building behind river
+let mill=group([5.2,0,5.3]);
+box([0,1.65,0],[6.6,3.3,4.8],wood,mill);
+box([0,.3,2.43],[6.9,.6,.18],wood2,mill);
+for(let x of [-2.85,-1.6,1.6,2.85])beam([x,-.05,2.48],[x,3.25,2.48],.13,wood2,mill);
+beam([-3,1.35,2.5],[0,3.1,2.5],.11,wood2,mill);beam([3,1.35,2.5],[0,3.1,2.5],.11,wood2,mill);
+box([0,3.48,0],[7.5,.25,5.7],roof,mill);
+for(let side of [-1,1]){let roofHalf=box([0,3.98,side*1.42],[7.6, .18,3.2],roof,mill);roofHalf.rotation.x=side*.45}
+beam([-3.75,3.3,0],[3.75,3.3,0],.12,wood2,mill);
+box([0,1.12,2.52],[1.15,2.25,.12],dark,mill);
+for(let x of [-1.9,1.9]){box([x,2.15,2.53],[1.0,1.0,.12],wood2,mill);box([x,2.15,2.61],[.72,.72,.06],water,mill);beam([x-.4,1.8,2.66],[x+.4,2.5,2.66],.035,cream,mill);beam([x+.4,1.8,2.66],[x-.4,2.5,2.66],.035,cream,mill)}
+// mill wheel vertical in side plane
+let wheel=new THREE.Group();wheel.position.set(3.55,1.28,1.35);mill.add(wheel);
+let tor=mesh(new THREE.TorusGeometry(1.22,.105,12,48),wood2,[0,0,0],wheel);tor.rotation.y=Math.PI/2;
+let hub=mesh(new THREE.CylinderGeometry(.23,.23,.65,20),gold,[0,0,0],wheel);hub.rotation.z=Math.PI/2;
+for(let i=0;i<12;i++){let a=i*Math.PI/6;beam([0,0,0],[0,Math.cos(a)*1.16,Math.sin(a)*1.16],.055,wood2,wheel);let paddle=box([0,Math.cos(a)*1.13,Math.sin(a)*1.13],[.16,.48,.22],wood,wheel);paddle.rotation.x=a}
+const wheelAnim=wheel;
+// trees with shaped layered crowns
+function tree(x,z,s=1){let g=group([x,0,z]);beam([0,0,0],[0,2.2*s,0],.24*s,wood,g);ball([0,2.25*s,0],[1.05*s,1.05*s,1.0*s],leaf,g);ball([-.38*s,2.75*s,.08*s],[.78*s,.8*s,.76*s],leaf2,g);ball([.38*s,2.65*s,-.12*s],[.75*s,.76*s,.74*s],leaf,g);ball([0,3.18*s,0],[.56*s,.58*s,.55*s],leaf2,g)}
+[[-15,5,1.5],[-12,9,1.25],[-8,8,1.2],[-3,10,1.35],[11,9,1.5],[15,4,1.4],[17,-1,1.25],[-16,-8,1.3],[12,-9,1.2],[-7,-9,1.15]].forEach(v=>tree(...v));
+// bushes
+for(let i=0;i<30;i++){let x=-17+(i*4.13)%34,z=-11+(i*2.71)%21;if(Math.abs(z+3)<2&&Math.abs(x)<15)continue;ball([x,.42,z],[.55,.5,.5],i%2?leaf:leaf2)}
+// crystals faceted clusters, each with emissive material
+const crystalMats=[new THREE.MeshStandardMaterial({color:0x83e5df,emissive:0x1c9f9c,emissiveIntensity:1.1,roughness:.22,metalness:.18}),new THREE.MeshStandardMaterial({color:0xc5a0ff,emissive:0x7043bd,emissiveIntensity:1.15,roughness:.2,metalness:.16})];
+let crystals=[];
+function crystal(x,z,h,mi=0){let g=group([x,.18,z]);let m=mesh(new THREE.CrystalGeometry?new THREE.CrystalGeometry():new THREE.OctahedronGeometry(.5,0),crystalMats[mi],[0,h*.48,0],g);m.scale.set(.48,h,.48);m.rotation.y=.3;let base=mesh(new THREE.DodecahedronGeometry(.43,0),stone,[0,.12,0],g);base.scale.y=.42;let glow=new THREE.PointLight(mi?0xb38cff:0x65ffff,1.4,4);glow.position.set(0,h*.65,0);g.add(glow);crystals.push({g,got:false});}
+crystal(-8,-.1,1.5,0);crystal(9,-5.4,1.8,1);crystal(-13,-5.8,1.25,1);crystal(-6,.8,.85,1);crystal(11,1.3,1.1,0);
+// flowers
+for(let i=0;i<100;i++){let x=-17+(i*1.97)%34,z=-12+(i*2.37)%24;if(Math.abs(z+3)<2.1&&Math.abs(x)<15)continue;let col=[0xf2c46b,0xeaa5d4,0xb5c6ff][i%3];let fm=mat(col);beam([x,.08,z],[x,.28,z],.018,leaf);ball([x,.3,z],[.10,.07,.10],fm)}
+// character helpers
+function makePerson(x,z,clothes,scale=1){let g=group([x,0,z]);ball([0,1.05,0],[.36,.48,.27],clothes,g);ball([0,1.72,0],[.29,.32,.27],cream,g);ball([0,1.43,.02],[.25,.12,.25],clothes,g);for(let s of [-1,1]){beam([s*.16,.78,0],[s*.18,.12,.02],.095,dark,g);beam([s*.3,1.34,0],[s*.42,.95,.05],.075,clothes,g);ball([s*.18,.1,.12],[.14,.09,.22],dark,g)}ball([0,2.03,0],[.31,.1,.29],wood2,g);return g}
+let hero=makePerson(-2.2,1.1,mat(0x4e7890)); // Leon
+let finaGirl=makePerson(-3.15,1.5,mat(0x986d9d),.94);
+// hair cap and simple facial features
+ball([-3.15,1.9,.02],[.31,.16,.28],wood,g=>{}); // detached visual accent
+// fox model companion, smooth organic forms
+let fox=group([-1.2,1.7,0]);
+ball([0,.65,0],[.65,.34,.32],orange,fox);ball([.43,.91,0],[.38,.39,.34],foxLight,fox);ball([.73,.78,.02],[.3,.19,.2],cream,fox);ball([.96,.78,.02],[.10,.09,.11],dark,fox);
+for(let s of [-1,1]){let ear=mesh(new THREE.ConeGeometry(.16,.5,12),orange,[.34+s*.18,1.25,s*.19],fox);ear.rotation.z=-.15;ball([.55,s*.25,1.0],[.08,.045,.09],dark,fox)}
+let tail=ball([-.7,.86,0],[.58,.23,.23],foxLight,fox);tail.rotation.z=.38;ball([-1.13,1.1,0],[.22,.19,.2],cream,fox);
+for(let x of [-.35,.35])for(let s of [-1,1]){beam([x,s*.2,.5],[x+.04,s*.2,.12],.075,orange,fox);ball([x+.08,s*.2,.1],[.14,.11,.1],dark,fox)}
+// Character positions; game plane uses x,z
+hero.position.set(-2.2,0,1.1);finaGirl.position.set(-3.5,0,1.6);fox.position.set(-1.25,0,1.45);
+// small sparkles in atmosphere
+for(let i=0;i<30;i++){let p=ball([-15+Math.random()*30,1+Math.random()*4,-10+Math.random()*20],[.035,.035,.035],gold);p.material=gold}
+const keys={};addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key.toLowerCase()==='e')interact()});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+let yaw=0, pitch=.22, distance=10,drag=false,lastX=0,lastY=0;
+renderer.domElement.addEventListener('pointerdown',e=>{drag=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});
+renderer.domElement.addEventListener('pointerup',()=>drag=false);
+renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;let dx=e.clientX-lastX,dy=e.clientY-lastY;lastX=e.clientX;lastY=e.clientY;yaw-=dx*.006;pitch=Math.max(-.08,Math.min(.75,pitch+dy*.0035))});
+renderer.domElement.addEventListener('wheel',e=>{distance=Math.max(5,Math.min(17,distance+e.deltaY*.01))},{passive:true});
+let joy={x:0,y:0};const joyEl=document.querySelector('#joystick'),stick=document.querySelector('#stick');let joyId=null;
+joyEl.addEventListener('pointerdown',e=>{joyId=e.pointerId;joyEl.setPointerCapture(joyId);moveJoy(e)});
+joyEl.addEventListener('pointermove',e=>{if(e.pointerId===joyId)moveJoy(e)});
+function moveJoy(e){let r=joyEl.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),l=Math.hypot(dx,dy),k=Math.min(1,44/(l||1));joy.x=dx*k/44;joy.y=dy*k/44;stick.style.transform='translate('+joy.x*35+'px,'+joy.y*35+'px)'}
+function endJoy(){joyId=null;joy.x=joy.y=0;stick.style.transform=''}
+joyEl.addEventListener('pointerup',endJoy);joyEl.addEventListener('pointercancel',endJoy);
+document.querySelector('#action').addEventListener('click',interact);
+let collected=0;function showHint(t){let h=document.querySelector('#hint');h.textContent=t;h.style.display='block';clearTimeout(showHint.timer);showHint.timer=setTimeout(()=>h.style.display='none',2600)}
+function interact(){let best=null,bd=4;for(let c of crystals){if(c.got)continue;let d=Math.hypot(c.g.position.x-hero.position.x,c.g.position.z-hero.position.z);if(d<bd){best=c;bd=d}}if(best){best.got=true;best.g.scale.setScalar(.01);collected++;document.querySelector('#count').textContent='Kristalle '+collected+' / 3';if(collected>=3){document.querySelector('#questText').textContent='Geschafft! Fina freut sich – die Kristalle sind gefunden.';showHint('Alle drei Kristallsplitter gefunden! Die Mühle beginnt geheimnisvoll zu leuchten.')}else showHint('Kristallsplitter eingesammelt! Fina wedelt begeistert mit dem Schwanz.')}else{let d=Math.hypot(hero.position.x-5.2,hero.position.z-5.3);showHint(d<6?'Das Wasserrad knarrt leise. Vielleicht braucht die Mühle die Kristalle.':'Fina schnuppert aufgeregt. Suche nach dem violetten und türkisfarbenen Leuchten.')}} 
+const clock=new THREE.Clock();let t=0;
+function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.04);t+=dt;
+let forward=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0)-joy.y;
+let strafe=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0)+joy.x;
+let len=Math.hypot(forward,strafe);if(len>1){forward/=len;strafe/=len}
+let speed=4.2*dt,dx=(Math.sin(yaw)*forward+Math.cos(yaw)*strafe)*speed,dz=(Math.cos(yaw)*forward-Math.sin(yaw)*strafe)*speed;
+hero.position.x=THREE.MathUtils.clamp(hero.position.x+dx,-19,19);hero.position.z=THREE.MathUtils.clamp(hero.position.z+dz,-13,15);
+if(len>.05){hero.rotation.y=Math.atan2(dx,dz);hero.position.y=Math.abs(Math.sin(t*12))*.035;fox.position.lerp(new THREE.Vector3(hero.position.x-1.0,0,hero.position.z+.6),Math.min(1,dt*3));fox.rotation.y=hero.rotation.y;finaGirl.position.lerp(new THREE.Vector3(hero.position.x-2.0,0,hero.position.z+1.2),Math.min(1,dt*1.4))}
+fox.position.y=Math.abs(Math.sin(t*4))*.035;wheel.rotation.x=Math.sin(t*.9)*.04;for(let c of crystals)if(!c.got)c.g.rotation.y+=dt*.35;
+let target=new THREE.Vector3(hero.position.x,1.1,hero.position.z);let offset=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch)+.18,Math.cos(yaw)*Math.cos(pitch)).multiplyScalar(distance);camera.position.copy(target).add(offset);camera.lookAt(target);
+renderer.render(scene,camera)}
+animate();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+showHint('Finde die drei Kristallsplitter. Bewege dich mit dem Steuerkreis oder WASD.');
+</script></body></html>
