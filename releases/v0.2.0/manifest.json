@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "spiel_id": "de.leonundfina.spiel",
+  "kanal": "stable",
+  "veroeffentlicht": "2026-11-23T18:35:25+00:00",
+  "hinweise": "Kapitel 2 – Der Eichenwald ist da!",
+  "programm": {
+    "version": "0.1.0",
+    "mindestversion": "0.1.0",
+    "kritisch": false,
+    "hinweise": "Technischer Prototyp",
+    "bezugswege": {
+      "android": "https://play.google.com/store/apps/details?id=de.leonundfina.prototyp",
+      "ios": "https://apps.apple.com/",
+      "web": "neu laden",
+      "windows": "Desktop-Updater",
+      "macos": "Desktop-Updater",
+      "linux": "Desktop-Updater"
+    }
+  },
+  "pakete": [
+    {
+      "id": "kapitel_2_eichenwald",
+      "typ": "kapitel",
+      "beschreibung": "Hinter einem geheimnisvollen Steintor wartet der Eichenwald mit Eule Olga.",
+      "highlights": [
+        "Neue Landschaft",
+        "Neue Bewohner",
+        "Neue Abenteuer",
+        "Neue Lernaufgaben"
+      ],
+      "klassenstufe": [
+        1,
+        2
+      ],
+      "min_spielversion": "0.1.0",
+      "plattformen": [
+        "alle"
+      ],
+      "abhaengigkeiten": [],
+      "kritisch": false,
+      "engine": "godot-4.5",
+      "version": "1.0.0",
+      "datei": "kapitel_2_eichenwald-1.0.0.zip",
+      "groesse": 3279,
+      "sha256": "7ab9e82983854cc863f352c6f1148b3f35399f150d60585dbbdc35aab2eb53db",
+      "url": "https://github.com/Mr-KinA/leon-und-fina-releases/releases/download/v0.2.0/kapitel_2_eichenwald-1.0.0.zip",
+      "titel": "Kapitel 2 – Der Eichenwald"
+    }
+  ]
+}

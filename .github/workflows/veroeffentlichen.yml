@@ -1,0 +1,68 @@
+name: Veröffentlichen
+
+# Läuft, wenn ein geprüftes Release unter releases/<version>/ oder die
+# Web-Bereitstellung unter pages/ auf main landet.
+on:
+  push:
+    branches: [main]
+    paths: ["releases/**", "pages/**", ".github/workflows/veroeffentlichen.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: veroeffentlichen
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Manifest-Signatur und Prüfsummen kontrollieren
+        run: |
+          set -e
+          for dir in releases/*/ pages/stable/; do
+            openssl dgst -sha256 -verify oeffentlicher_schluessel.pem -signature "$dir/manifest.json.sig" "$dir/manifest.json"
+          done
+          python3 - <<'PY'
+          import hashlib, json, os, sys
+          for d in sorted(os.listdir("releases")):
+              m = json.load(open(f"releases/{d}/manifest.json"))
+              for p in m["pakete"]:
+                  data = open(f"releases/{d}/{p['datei']}", "rb").read()
+                  assert hashlib.sha256(data).hexdigest() == p["sha256"], p["datei"]
+                  assert len(data) == p["groesse"], p["datei"]
+          print("Prüfsummen ok")
+          PY
+      - name: GitHub Release für die neueste Version anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          latest=$(ls releases | sort -V | tail -n 1)
+          if gh release view "$latest" >/dev/null 2>&1; then
+            echo "Release $latest existiert bereits – Dateien werden aktualisiert"
+            gh release upload "$latest" releases/$latest/* --clobber
+          else
+            notes=$(python3 -c "import json;print(json.load(open('releases/$latest/manifest.json'))['hinweise'])")
+            gh release create "$latest" releases/$latest/* --title "Leon & Fina $latest" --notes "$notes" --latest
+          fi
+
+  pages:
+    runs-on: ubuntu-latest
+    needs: release
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+      - id: deploy
+        uses: actions/deploy-pages@v4
